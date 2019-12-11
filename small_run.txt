@@ -1,0 +1,10 @@
+# 20 minutes in docker
+python build_samples_library.py -i testing_data_examples/data-1 -c 3000 -r 800 -s 15 -v 0.0005 -a 0.95
+
+# compute past chains on old data
+python relation15.py -s samples_library.json -r rescaled_trade_data.pickle -p
+
+# train network
+python relation15.py -s samples_library.json -r rescaled_trade_data.pickle -t
+
+

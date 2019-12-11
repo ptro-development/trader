@@ -1,0 +1,347 @@
+import random
+import math
+import copy
+import numpy as np
+import neurolab as nl
+
+
+def init_random_layer_bases_and_wigths(layer):
+    layer.np['w'][:] = np.random.uniform(-0.5, 0.5, layer.np['w'].shape)
+    layer.np['b'][:] = np.random.uniform(-0.5, 0.5, layer.np['b'].shape)
+
+
+def fitnes_function(network, outputs, targets):
+    error = targets - outputs
+    return -0.5 * np.sum(np.square(error))
+
+
+def get_random_member_index(fitness, fitness_sum, population_size):
+    cumulative_sum = 0.0
+    member_index = 0
+    fitness_point = -random.random() * fitness_sum
+    for index in range(population_size):
+        cumulative_sum += fitness[index]
+        if cumulative_sum > fitness_point:
+            member_index = index
+            break
+    return member_index
+
+
+def xrandom_arryas_cross_over(first, second, prob=0.5):
+    assert len(first) == len(second)
+    for index in range(len(first)):
+        if random.random() > prob:
+            yield first[index]
+        else:
+            yield second[index]
+
+
+def random_arryas_cross_over(first, second, prob=0.5):
+    return list(xrandom_arryas_cross_over(first, second, prob))
+
+
+def numpy_random_arryas_cross_over(first, second, prob=0.5):
+    return np.array(random_arryas_cross_over(first, second, prob))
+
+
+def random_members_crros_over(
+        old_member_first, old_member_second,
+        new_member_first, new_member_second):
+    if random.random() < 0.5:
+        print "copy"
+        # only copy
+        new_member_first = old_member_first
+        new_member_second = old_member_second
+    else:
+        print "crossover"
+        # cross over
+        new_member_first = old_member_second  # noqa
+        new_member_second = old_member_first  # noqa
+
+
+def random_value_mutation(value, mutation_rate, min_value, max_value):
+    if random.random() < mutation_rate:
+        random_value = 2.0 * math.sqrt(-2 * math.log(random.random())) * \
+            math.sin(2 * math.pi * random.random())
+        value += random_value
+        # limiting extremes
+        if value < min_value:
+            value = min_value
+        elif value > max_value:
+            value = max_value
+    return value
+
+
+def xrandom_values_mutation(values, mutation_rate, min_value, max_value):
+    for value in values:
+        yield random_value_mutation(value, mutation_rate, min_value, max_value)
+
+
+def random_values_mutation(values, mutation_rate, min_value, max_value):
+    return list(
+        xrandom_values_mutation(values, mutation_rate, min_value, max_value))
+
+
+def numpy_random_values_mutation(values, mutation_rate, min_value, max_value):
+    return np.array(
+        random_values_mutation(values, mutation_rate, min_value, max_value))
+
+
+class NetworksPopulation(object):
+
+    def __init__(
+            self, size, network_layers_layout,
+            input_values_ranges, min_max_base_value_limits,
+            min_max_weight_value_limits):
+        assert len(min_max_base_value_limits) == 2 and \
+            isinstance(min_max_base_value_limits, list)
+        assert len(min_max_weight_value_limits) == 2 and \
+            isinstance(min_max_weight_value_limits, list)
+        self.min_base, self.max_base = min_max_base_value_limits
+        self.min_weight, self.max_weight = min_max_weight_value_limits
+        self.input_values_ranges = input_values_ranges
+        self.network_layers_layout = network_layers_layout
+        self.size = size
+        self.population = [
+            nl.net.newff(input_values_ranges, network_layers_layout)
+            for i in range(self.size)]
+
+    def get_size(self):
+        return self.size
+
+    def get_network_layers_layout(self):
+        return self.network_layers_layout
+
+    def get_input_values_ranges(self):
+        return self.input_values_ranges
+
+    def get_min_max_base_value_limits(self):
+        return [self.min_base, self.max_base]
+
+    def get_min_max_weight_value_limits(self):
+        return [self.min_weight, self.max_weight]
+
+    def get_min_base_limit(self):
+        return self.min_base
+
+    def get_max_base_limit(self):
+        return self.max_base
+
+    def get_min_weight_limit(self):
+        return self.min_weight
+
+    def get_max_weight_limit(self):
+        return self.max_weight
+
+    def get_population(self):
+        return self.population
+
+    def get_population_member(self, index):
+        assert index < self.get_size()
+        return self.population[index]
+
+    def set_population_member(self, index, member):
+        assert index < self.get_size()
+        self.population[index] = member
+
+    def get_network_layers_count(self):
+        return len(self.population[0].layers)
+
+    def set_network_layer_bases(self, population_index, layer_index, values):
+        self.population[population_index].layers[layer_index].np['b'] = values
+
+    def get_network_layer_bases(self, pupulation_index, layer_index):
+        return self.population[pupulation_index].layers[layer_index].np['b']
+
+    def set_network_layer_weights(
+            self, pupulation_index, layer_index, inner_index, values):
+        self.population[pupulation_index].layers[layer_index].np['w'][inner_index] = values  # noqa
+
+    def get_network_layer_weights(
+            self, pupulation_index, layer_index, inner_index):
+        return self.population[pupulation_index].layers[layer_index].np['w'][inner_index]  # noqa
+
+    def get_network_weights_layer_count(self, population_index, layer_index):
+        return len(self.population[population_index].layers[layer_index].np['w'])  # noqa
+
+    def copy_in_network_layer_properties(
+            self, population_index, layer_index, properties):
+        self.population[population_index].layers[layer_index].np = copy.deepcopy(properties)  # noqa
+
+    def get_network_layer_properties(
+            self, population_index, layer_index):
+        return self.population[population_index].layers[layer_index].np
+
+    def copy_in_population(self, population):
+        self.population[:] = population
+
+    def get_population_fitness(self, inputs, targets):
+        fitness = []
+        best_fitness = -1000000000.0
+        worst_fitness = 1.0
+        best_fitness_index = 0
+
+        for index, network in enumerate(self.population):
+            outputs = []
+            outputs.append(
+                network.sim(inputs))
+            fitness.append(
+                fitnes_function(
+                    network, outputs, targets))
+            if fitness[-1] > best_fitness:
+                best_fitness = fitness[-1]
+                best_fitness_index = index
+            if fitness[-1] < worst_fitness:
+                worst_fitness = fitness[-1]
+        return best_fitness, best_fitness_index, worst_fitness, fitness
+
+
+class NetworksPopulationEvolution(object):
+
+    def __init__(self, population, cross_rate, mutation_rate):
+        self.population = population
+        self.new_population = None
+        self.cross_rate = cross_rate
+        self.mutation_rate = mutation_rate
+
+    def get_population(self):
+        return self.population
+
+    def evolve(self, fitness, fitness_sum, best_fitness_index):
+        # generate new population, the values of new generation are
+        # not important as they are going to be overwritten by cross
+        # over and mutation from previous population
+        self.new_population = NetworksPopulation(
+            self.population.get_size(),
+            self.population.get_network_layers_layout(),
+            self.population.get_input_values_ranges(),
+            self.population.get_min_max_base_value_limits(),
+            self.population.get_min_max_weight_value_limits())
+
+        for index in range(0, self.population.get_size(), 2):
+            first_member_index = get_random_member_index(
+                fitness, fitness_sum, self.population.get_size())
+            second_member_index = get_random_member_index(
+                fitness, fitness_sum, self.population.get_size())
+
+            # do cross over of bases and weights
+            if random.random() < self.cross_rate:
+
+                self.crros_over_bases(
+                    index, first_member_index, second_member_index)
+                self.mutate_bases(index)
+                self.crros_over_weights(
+                    index, first_member_index, second_member_index)
+                self.mutate_weights(index)
+
+            else:
+                # complete copy, no cross over
+                for layer_index in range(self.population.get_network_layers_count()):  # noqa
+                    self.new_population.copy_in_network_layer_properties(
+                        index, layer_index,
+                        self.population.get_network_layer_properties(
+                            first_member_index, layer_index))
+                    self.new_population.copy_in_network_layer_properties(
+                        index+1, layer_index,
+                        self.population.get_network_layer_properties(
+                            second_member_index, layer_index))
+
+        # elitism, keeping the best member
+        self.new_population.set_population_member(
+            0, self.population.get_population_member(best_fitness_index))
+        self.population.copy_in_population(
+            self.new_population.get_population())
+
+    def crros_over_bases(
+            self, index, first_member_index, second_member_index):
+        for layer_index in range(self.population.get_network_layers_count()):  # noqa
+            self.new_population.set_network_layer_bases(
+                index, layer_index,
+                numpy_random_arryas_cross_over(
+                    self.population.get_network_layer_bases(
+                        first_member_index, layer_index),
+                    self.population.get_network_layer_bases(
+                        second_member_index, layer_index)))
+            self.new_population.set_network_layer_bases(
+                index+1, layer_index,
+                numpy_random_arryas_cross_over(
+                    self.population.get_network_layer_bases(
+                        first_member_index, layer_index),
+                    self.population.get_network_layer_bases(
+                        second_member_index, layer_index)))
+
+    def mutate_bases(self, index):
+        for child in range(2):
+            for layer_index in range(self.population.get_network_layers_count()):  # noqa
+                self.new_population.set_network_layer_bases(
+                    index+child, layer_index,
+                    numpy_random_values_mutation(
+                        self.new_population.get_network_layer_bases(
+                            index+child, layer_index),
+                        self.mutation_rate,
+                        self.population.get_min_base_limit(),
+                        self.population.get_max_base_limit()))
+
+    def crros_over_weights(
+            self, index, first_member_index, second_member_index):
+        for layer_index in range(self.population.get_network_layers_count()):
+            for inner_index in range(self.population.get_network_weights_layer_count(index, layer_index)):  # noqa
+                self.new_population.set_network_layer_weights(
+                    index, layer_index, inner_index,
+                    numpy_random_arryas_cross_over(
+                        self.population.get_network_layer_weights(
+                            first_member_index, layer_index, inner_index),
+                        self.population.get_network_layer_weights(
+                            second_member_index, layer_index, inner_index)))
+                self.new_population.set_network_layer_weights(
+                    index+1, layer_index, inner_index,
+                    numpy_random_arryas_cross_over(
+                        self.population.get_network_layer_weights(
+                            first_member_index, layer_index, inner_index),
+                        self.population.get_network_layer_weights(
+                            second_member_index, layer_index, inner_index)))
+
+    def mutate_weights(self, index):
+        for child in range(2):
+            for layer_index in range(self.population.get_network_layers_count()):  # noqa
+                for inner_index in range(self.population.get_network_weights_layer_count(index, layer_index)):  # noqa
+                    self.new_population.set_network_layer_weights(
+                        index+child, layer_index, inner_index,
+                        numpy_random_values_mutation(
+                            self.new_population.get_network_layer_weights(
+                                index+child, layer_index, inner_index),
+                            self.mutation_rate,
+                            self.population.get_min_weight_limit(),
+                            self.population.get_max_weight_limit()))
+
+
+class GenetationsEvolution(object):
+
+    def __init__(
+            self, networks_population_evolution,
+            evolution_cycles, report_every=10):
+        self.evolution = networks_population_evolution
+        self.evolution_cycles = evolution_cycles
+        self.report_every = report_every
+
+    def run(self, inputs, targets):
+        for run in range(self.evolution_cycles):
+            population = self.evolution.get_population()
+            best_fitness, best_fitness_index, \
+                worst_fitness, fitness = population.get_population_fitness(
+                    inputs, targets)
+
+            # modify fitness values for easier selection to make
+            # sure that member with worst fitness is not going
+            # to be chosen
+            fitness_sum = 0.0
+            for index in range(population.get_size()):
+                fitness[index] -= worst_fitness
+                fitness_sum -= fitness[index]
+
+            self.evolution.evolve(
+                fitness, fitness_sum, best_fitness_index)
+
+            if not run % self.report_every:
+                print "Generation: " + str(run) + " Fitness: " + \
+                    str(best_fitness)
