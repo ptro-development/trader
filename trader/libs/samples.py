@@ -39,6 +39,11 @@ def save_samples_library(file_path, sorted_samples_plus, sorted_samples_minus):
             fd)
 
 
+def save_simple_samples_library(file_path, samples):
+    with open(file_path, "w") as fd:
+        json.dump(samples, fd)
+
+
 def remove_samples_min_correlation(
         samples_library,
         min_number_correlations_positions=2):
@@ -158,6 +163,22 @@ def get_random_samples(
             aceptable_min_sample_value_variation(
                 data[start_of_sample: start_of_sample + sample_size],
                 min_sample_variation):
+            indexes.append(start_of_sample)
+            s = get_empty_sample()
+            s["sample_position"] = start_of_sample
+            s["sample_data"] = data[
+                start_of_sample: start_of_sample + sample_size]
+            samples.append(s)
+    return samples
+
+
+def get_random_samples2(
+        data, sample_size, sample_count):
+    samples = []
+    indexes = []
+    for i in range(0, sample_count):
+        start_of_sample = random.randint(0, len(data) - sample_size - 1)
+        if start_of_sample not in indexes:
             indexes.append(start_of_sample)
             s = get_empty_sample()
             s["sample_position"] = start_of_sample

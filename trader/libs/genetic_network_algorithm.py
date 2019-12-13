@@ -125,7 +125,7 @@ class NetworksPopulation(object):
             input_values_ranges, min_max_base_value_limits,
             min_max_weight_value_limits, gain_loss_trees,
             gain_loss_trade_sequences,
-            trade_data, gain_loss_samples):
+            trade_data, gain_loss_samples, init_population=True):
         assert len(gain_loss_trees) == 2 and isinstance(gain_loss_trees, tuple)
         assert len(gain_loss_trade_sequences) == 2 and \
             isinstance(gain_loss_trade_sequences, tuple)
@@ -144,7 +144,8 @@ class NetworksPopulation(object):
         self.trade_data = trade_data
         self.gain_tree_depth = len(get_tree_layers_counts(gain_loss_trees[0]))
         self.loss_tree_depth = len(get_tree_layers_counts(gain_loss_trees[1]))
-        self._init_population()
+        if init_population:
+            self._init_population()
         self.gain_loss_tree_trails = (
             TreeKeysTrailsCollection(gain_loss_trees[0]),
             TreeKeysTrailsCollection(gain_loss_trees[1]))
@@ -156,12 +157,15 @@ class NetworksPopulation(object):
         # Following function needs to happen only once because
         # every member of population would follow
         # the same rules when deciding.
-        self._compute_probability_and_delete_key()
+        # it computes stats like volatilities, probabilities ...
+        self._compute_stats_and_delete_key()
+        # No need for this as normalisation of volatilities happens on the fly.
+        # self._normalise_volatilities()
         # Next functions need to run for every number in population
         # as they have different network weights.
         # self._init_population_trails()
         min_value, max_value = self._compute_amount_to_buy()
-        self._normalize_amount_to_buy(min_value, max_value)
+        self._normalise_amount_to_buy(min_value, max_value)
 
     def _init_population(self):
         self.population = [
@@ -175,17 +179,21 @@ class NetworksPopulation(object):
             copy.deepcopy(tree_trails) for i in range(self.size)]
     """
 
-    def _compute_probability_and_delete_key(self):
+    def _compute_stats_and_delete_key(self):
         for bit in self.gain_loss_trade_sequences[0]:
             # gain
             self.gain_loss_tree_trails[0].append_only_if_inactive(bit[1])
-            self.gain_loss_tree_trails[0].compute_probability_delete_euclidean_closest_key_extended(  # noqa
-                bit[1], bit[0], self.gain_loss_samples[0])
+            self.gain_loss_tree_trails[0].compute_stats_and_delete_euclidean_closest_key_extended(  # noqa
+                bit[1], bit[0], self.gain_loss_samples[0], self.sample_size, self.trade_data.prices)  # noqa
         for bit in self.gain_loss_trade_sequences[1]:
             # loss
             self.gain_loss_tree_trails[1].append_only_if_inactive(bit[1])
-            self.gain_loss_tree_trails[1].compute_probability_delete_euclidean_closest_key_extended(  # noqa
-                bit[1], bit[0], self.gain_loss_samples[1])
+            self.gain_loss_tree_trails[1].compute_stats_and_delete_euclidean_closest_key_extended(  # noqa
+                bit[1], bit[0], self.gain_loss_samples[1], self.sample_size, self.trade_data.prices)  # noqa
+
+    def _normalise_volatilities(self):
+        self.gain_loss_tree_trails[0].normalise_volatilities()
+        self.gain_loss_tree_trails[1].normalise_volatilities()
 
     """
     def _init_population_trails(self):
@@ -214,13 +222,17 @@ class NetworksPopulation(object):
             "layer_index", "position", "starting_position"]
         for value in values:
             output.append(data[value])
+        # print "data: ", data
+        for volatility in data["volatilities"]:
+            output.append(volatility)
         return output
 
     def prepare_train_data(self):
         train_data = {}
         gain_data = self.gain_loss_tree_trails[0].get_training_data()
         loss_data = self.gain_loss_tree_trails[1].get_training_data()
-        # print "gain_data", gain_data
+        # print gain_data
+        # print loss_data
         # This needs to be synchronised
         for position in xrange(len(self.trade_data.prices)):
             # missing values are going to be provided as (-1)
@@ -248,6 +260,9 @@ class NetworksPopulation(object):
         max_value = -10000000
         self.train_data = self.prepare_train_data()
         # print "self.train_data", self.train_data
+        # print "self.train_data_keys", sorted(self.train_data.keys())
+        # import sys
+        # sys.exit()
         for n_index, network in enumerate(self.population):
             self.amount_to_buy[n_index] = {}
             for position, values in self.train_data.items():
@@ -271,13 +286,13 @@ class NetworksPopulation(object):
         return min_value, max_value
 
     """
-    def _normalize_amount_to_buy(self):
+    def _normalise_amount_to_buy(self):
         for trails in self.population_tree_trails:
-            trails.normalize_amount_to_buy()
+            trails.normalise_amount_to_buy()
     """
 
     """
-    def _normalize_amount_to_buy_2(self, min_value, max_value):
+    def _normalise_amount_to_buy_2(self, min_value, max_value):
         linear_normalisation = LinearNormalisation(
             min(self.amount_to_buy.values()),
             max(self.amount_to_buy.values()), 0.0, 1.0)
@@ -286,7 +301,7 @@ class NetworksPopulation(object):
                 self.amount_to_buy[key])
     """
 
-    def _normalize_amount_to_buy(self, min_value, max_value):
+    def _normalise_amount_to_buy(self, min_value, max_value):
         linear_normalisation = LinearNormalisation(
             min_value, max_value, 0.0, 1.0)
         for n_index, values in self.amount_to_buy.items():
@@ -371,7 +386,7 @@ class NetworksPopulation(object):
         self.no_limit_investment = []
         self.no_limit_gain = []
         self.no_limit_loss = []
-        self.best_fitness = -1.0
+        self.best_fitness = -1000000000.0
         self.worst_fitness = 1000000000.0
         self.best_fitness_index = 0
 
@@ -411,48 +426,59 @@ class NetworksPopulation(object):
         no_limit_gain = 0.0
         no_limit_loss = 0.0
         no_limit_investment = 0.0
-        last_gain_trail_start_positions = None
-        print "self.train_data.items", sorted(self.train_data.items())
-        for position, data in self.train_data.items():
-            # skip first position
-            gain_trail_start_position = data[3]
-            if not gain_trail_start_position == last_gain_trail_start_positions:  # noqa
-                # new start position
-                last_gain_trail_start_positions = gain_trail_start_position
+        last_trail_start_positions = None
+        # find first trial position if any
+        sorted_positions = 0
+        if len(self.train_data) > 1:
+            sorted_positions = sorted(self.train_data.keys())
+            last_trail_start_positions = self.train_data[sorted_positions[0]][4]  # noqa
+        else:
+            return gain, loss, investment, partial_investments, \
+                no_limit_gain, no_limit_loss, no_limit_investment
+
+        data_size = len(self.trade_data.prices)
+        for position in sorted_positions:
+            current_start_position = self.train_data[position][4]
+            # are we in trade trail ?
+            if current_start_position is not last_trail_start_positions:
+                last_trail_start_positions = self.train_data[position][4]
             else:
-                # in trading sequence not the first element due to
-                # condition above
-                start_position = gain_trail_start_position
-                end_position = start_position + self.sample_size
-                print "start_position", start_position, "end_position", end_position
-                price_diff = self.trade_data.prices[end_position] - \
-                    self.trade_data.prices[start_position]
-                trade_amount = sum(
-                    self.trade_data.trades[tick] for tick in range(
-                        start_position, end_position))
-                no_limit_investment += self.trade_data.prices[start_position] \
-                    * trade_amount * gain_percentage
-                last_no_limit_gain = price_diff * trade_amount * \
-                    gain_percentage
+                # skip the first trade trail position as
+                # that one is used as indicator of trail start
+                # and should not be in overall gain calculation
+                # note: first position does not represent root tree node
+                #       which is good
+                if position is not last_trail_start_positions and \
+                        (position + self.sample_size) < data_size:
+                    start_position = position
+                    end_position = start_position + self.sample_size
+                    # print "start_position", start_position, \
+                    #    "end_position", end_position
+                    price_diff = self.trade_data.prices[end_position] - \
+                        self.trade_data.prices[start_position]
+                    trade_amount = sum(
+                        self.trade_data.trades[tick] for tick in range(
+                            start_position, end_position))
+                    no_limit_investment += self.trade_data.prices[start_position] * trade_amount * gain_percentage  # noqa
+                    last_no_limit_gain = price_diff * trade_amount * \
+                        gain_percentage
 
-                if last_no_limit_gain > 0:
-                    no_limit_gain += last_no_limit_gain
-                else:
-                    no_limit_loss += last_no_limit_gain
+                    if last_no_limit_gain > 0:
+                        no_limit_gain += last_no_limit_gain
+                    else:
+                        no_limit_loss += last_no_limit_gain
 
-                # index + 1 compensates for not starting 0 element
-                amount_to_buy = self.amount_to_buy[network_index][position]
-                last_investment = self.trade_data.prices[start_position] * \
-                    trade_amount * amount_to_buy * gain_percentage
-                partial_investments.append(last_investment)
-                investment += last_investment
-                print "price_diff", price_diff
-                last_gain = price_diff * trade_amount * \
-                    amount_to_buy * gain_percentage
-                if last_gain > 0:
-                    gain += last_gain
-                else:
-                    loss += last_gain
+                    amount_to_buy = self.amount_to_buy[network_index][position]
+                    last_investment = self.trade_data.prices[start_position] * trade_amount * amount_to_buy * gain_percentage  # noqa
+                    partial_investments.append(last_investment)
+                    investment += last_investment
+                    # print "price_diff", price_diff
+                    last_gain = price_diff * trade_amount * \
+                        amount_to_buy * gain_percentage
+                    if last_gain > 0:
+                        gain += last_gain
+                    else:
+                        loss += last_gain
 
         return gain, loss, investment, partial_investments, no_limit_gain, \
             no_limit_loss, no_limit_investment
@@ -466,7 +492,7 @@ class NetworksPopulation(object):
         self.no_limit_investment = []
         self.no_limit_gain = []
         self.no_limit_loss = []
-        self.best_fitness = -1.0
+        self.best_fitness = -1000000000.0
         self.worst_fitness = 1000000000.0
         self.best_fitness_index = 0
 
@@ -483,8 +509,8 @@ class NetworksPopulation(object):
             self.no_limit_gain.append(no_limit_gain)
             self.no_limit_loss.append(no_limit_loss)
             self.no_limit_investment.append(no_limit_investment)
-            print "gain", self.gain[-1], "loss", self.loss[-1]
             profit = self.gain[-1] + self.loss[-1]
+            # print "gain", self.gain[-1], "loss", self.loss[-1], "profit", profit  # noqa
             self.fitness.append(profit)
             if profit > self.best_fitness:
                 self.best_fitness = profit
@@ -557,8 +583,11 @@ class NetworksPopulationEvolution(object):
     def evolve_one_cycle(self, only_layer=None):
         self.population.trade()
         data = self.population.get_population_fitness()  # noqa
+        # print "fitness", data["fitness"]
         fitness_sum = self._adjust_fitness(
             data["fitness"], data["worst_fitness"])
+        # print "best_fitness", data["best_fitness"]
+        # print "best_fitness_index", data["best_fitness_index"]
         self.evolve(
             data["fitness"], fitness_sum,
             data["best_fitness_index"], only_layer)
@@ -622,6 +651,7 @@ class NetworksPopulationEvolution(object):
                             second_member_index, layer_index))
 
         # elitism, keeping the best member
+        # print "best_fitness_index", best_fitness_index
         self.new_population.set_population_member(
             0, self.population.get_population_member(best_fitness_index))
         # self.population.copy_in_population(
@@ -714,8 +744,8 @@ class GenetationsEvolution(object):
         self.last_strategy_index = 0
         self.last_strategy_change_at = 0
         self.strategies_router = [
-            # self.evolution.evolve_neurons_backwards_from_last_layer,
-            # self.evolution.evolve_neurons_forward_from_first_layer,
+            self.evolution.evolve_neurons_backwards_from_last_layer,
+            self.evolution.evolve_neurons_forward_from_first_layer,
             self.evolution.evolve_all_neurons_at_once]
         self.strategies_stats = {}
         for index, function in enumerate(self.strategies_router):
@@ -759,6 +789,7 @@ class GenetationsEvolution(object):
         pprint.pprint(self.strategies_stats)
 
 
+"""
 def compute_probability_and_delete_key(
         gain_loss_trade_sequences, gain_loss_tree_trails, gain_loss_samples):
     for bit in gain_loss_trade_sequences[0]:
@@ -771,3 +802,4 @@ def compute_probability_and_delete_key(
         gain_loss_tree_trails[1].append_only_if_inactive(bit[1])
         gain_loss_tree_trails[1].compute_probability_delete_euclidean_closest_key_extended(  # noqa
             bit[1], bit[0], gain_loss_samples[1])
+"""

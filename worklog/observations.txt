@@ -1,0 +1,48 @@
+It matters how log the sequences / sample sizes are when it interval goes down.
+
+60 / 15 will generate less records in gain tree ... then following
+60 / 5
+
+so with going more granullar all constants need to be adjusted.
+
+Interesting thing is that also we are more granular in terms of coverage, have a look for 60 /5 (81%)
+
+build_tree 1490541769.09
+Saving into skeleton_gain_tree.pickle
+Saving into skeleton_loss_tree.pickle
+Delete previous sample matches.
+Delete previous sample matches.
+Saving into previous_gain_samples.json
+Saving into previous_loss_samples.json
+Running sample matching.
+Matching of 1024 took 105.606065989 seconds for index 0
+Running sample matching.
+Matching of 1024 took 102.042421103 seconds for index 0
+Building new chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+sorted_correlation_facts count: 1430723
+TradeSampleChain Coverage: (105440, 0.8135865245873811, 24159, 0.18641347541261893)
+Saving into previous_trade_gain_sequence.pickle
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+sorted_correlation_facts count: 1425314
+TradeSampleChain Coverage: (105440, 0.8135865245873811, 24159, 0.18641347541261893)
+Saving into previous_trade_loss_sequence.pickle
+Populate skeleton tree with new sequence.
+Saving into previous_gain_tree.pickle
+Saving into previous_loss_tree.pickle
+[pwrap@localhost project-tr]$ python relation16.py -s data-123-20000-60-5-0.0005-0.95/reduced_samples_library.json -r data-123-20000-60-5-0.0005-0.95/rescaled_trade_data.pickle -t
+Couldn't import dot_parser, loading of dot files will not be possible.
+Loading from data-123-20000-60-5-0.0005-0.95/rescaled_trade_data.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_trade_gain_sequence.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_tree.pickle
+Loading from previous_trade_loss_sequence.pickle
+Loading from previous_loss_samples.json
+Gain tree layers counts (all, [known, unknown]) [12484.0, 3857.0, 276.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] ([12484.0, 853.0, 202.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 3004.0, 74.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+Loss tree layers counts (all, [known, unknown]) [12162.0, 3763.0, 318.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] ([12162.0, 785.0, 229.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 2978.0, 89.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+
+

@@ -1,0 +1,7 @@
+With window 60 seconds and sample size 15 which makes 15 minutes log samples in 3 months and 20000 samples we have too many correlations which makes it hard when doing computation. To much data to loop through.
+
+Setup above led to 13 million correlation facts for example. To keep the amount of samples lower following things should be tried to keep only most fitting samples.
+
+- higher correlation factor should be required 0.985, 0.99, 0.995
+- write code to remove overlapping matches from samples which have the most matches to keep only those which are with sample with higher correlation
+- min variation should be removed to get rid of empty gaps because a lot of sample are going to be small

@@ -24,24 +24,54 @@ def get_euclidean_closest_element(base_element, elements):
         element  [element, x_1, x_2, ... x_n]
         elements [[element_1, x_1, x_2, ... x_n], ....]
     """
-    assert isinstance(base_element, tuple) and len(base_element) != 0
+    """
+        TODO:
+            Normalise all vectors values to be between <0,1>
+            in their dimensions.
+    """
+    # print "base_element", base_element, "elements", elements
+    assert isinstance(base_element, list) and len(base_element) != 0
     assert isinstance(elements, list) and len(elements) != 0
-    smalest_distance = distance.euclidean(base_element[1:], elements[0][1:])
-    smalest_distance_elements = [elements[0]]
+    smallest_distance = distance.euclidean(base_element[1:], elements[0][1:])
+    # x[2] - volatility_delete_index
+    volatility_delete_index = 0
+    smallest_distance_elements = [
+        [elements[0], smallest_distance, volatility_delete_index]]
+    # print "1 smallest_distance_elements", smallest_distance_elements
+    current_element_key = elements[0][0]
     if len(elements) > 1:
         for index, element in enumerate(elements[1:]):
+            # to identify volatility index for delete later
+            if current_element_key != element[0]:
+                current_element_key = element[0]
+                volatility_delete_index = 0
+            else:
+                volatility_delete_index += 1
             last_distance = distance.euclidean(base_element[1:], element[1:])
-            if last_distance < smalest_distance:
-                smalest_distance = last_distance
-                smalest_distance_elements = [element]
-            elif last_distance == smalest_distance:
-                smalest_distance_elements.append(element)
+            # print "last_distance", last_distance, \
+            #   "smallest_distance", smallest_distance
+            if last_distance < smallest_distance:
+                smallest_distance = last_distance
+                smallest_distance_elements = [
+                    [element, smallest_distance, volatility_delete_index]]
+            elif last_distance == smallest_distance:
+                # print "!!!!!!!!! last_distance", last_distance
+                smallest_distance_elements.append(
+                    [element, smallest_distance, volatility_delete_index])
     closest_element = None
-    if len(smalest_distance_elements) > 1:
-        closest_element = random.choice(smalest_distance_elements)
+    if len(smallest_distance_elements) > 1:
+        # print "A"
+        closest_element = random.choice(smallest_distance_elements)
     else:
-        closest_element = smalest_distance_elements[0]
-    return closest_element, smalest_distance
+        # print "B"
+        closest_element = smallest_distance_elements[0]
+    # [leaf, smallest_distance, volatility_delete_index]
+    # print "smallest_distance_elements", smallest_distance_elements
+    # print "closest_element", closest_element
+    # print "closest_element:key", closest_element[0]
+    # print "closest_element:distance", closest_element[1]
+    # print "closest_element:delete_index", closest_element[2]
+    return closest_element
 
 
 def get_chunks_indexes(interval_size, count):
@@ -144,14 +174,21 @@ def get_start_and_end_trade_log_epochs(log_path):
     )
 
 
-def connect_arrays(first, second):
+def connect_arrays(first, second, place_holder=-1):
+    """ It connects two arrays in provided order into one. Before the arrays
+        are joined they are extended to longest array length where missing
+        values are substituted by place_holder argument.
+
+    >>> connect_arrays([1, 2], [3, 4, 5], -1)
+    [1, 2, -1, 3, 4, 5]
+    """
     len_first = len(first)
     len_second = len(second)
     max_size = len_first
     if len_second > max_size:
         max_size = len_second
-    new_first = max_size * [-1]
-    new_second = max_size * [-1]
+    new_first = max_size * [place_holder]
+    new_second = max_size * [place_holder]
     new_first[0:len_first] = first[:]
     new_second[0:len_second] = second[:]
     return new_first + new_second

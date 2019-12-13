@@ -1,2 +1,2 @@
-# trader
-Bitcoin trading data sentance analysis
+# project-tr
+Project TR.

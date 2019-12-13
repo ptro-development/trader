@@ -1,0 +1,378 @@
+Branch : strategy_biggest_loss_and_gain
+
+***********
+NEW things
+***********
+
+
+Training with previous data:
+  When training both trading trees are used to compute inputs for neural network
+
+    Inputs:
+
+    1. Probability of hitting leaf in tree
+        1.1 - know sample
+        1.2 - unknown
+    2. Layer number / index (where we are traid from beginning)
+    3. Current position in whole sequence
+    4. Starting position of traid
+    5. Volatility (1) 0.25 of sample period size
+    6. Volatility (2) 0.45 of sample period size
+    7. Volatility (3) 0.9 of sample period size
+    8. Volatility (4) 1.5 of sample period size
+    9. Volatility (5) 3.5 of sample period size
+
+    Output:
+
+    1. Amount to buy <0.0, 1.0> or <0% to 100%>
+
+Trading test for new data:
+  New trading sequence is completely mapped / searched for previous samples and
+  then new trading chains are built. These are then ran against previous gain /
+  loss trees to compute inputs for network so it knows how much to buy
+  (quantity).
+  During this process algorithm does buying quantity of currency
+  witch comes out of trained neuron network from previous step. It basically
+  expects that some of these chains are going to happen or at least chains
+  which have similar close shape.
+
+Choosing of key from tree when there is no match is based on euclidean
+distance of following attributes.
+
+    # x1: sample attribute number (up, down, stale ...)
+    # x2: probability of happening
+    # x3: correlation number
+    # x4: Volatility (1) 0.25 of sample period size
+    # x5: Volatility (2) 0.45 of sample period size
+    # x6: Volatility (3) 0.9 of sample period size
+    # x7: Volatility (4) 1.5 of sample period size
+    # x8: Volatility (5) 3.5 of sample period size
+
+
+    # x1: length of unknown
+    # x2: probability of happening
+    # x3: Volatility (1) 0.25 of sample period size
+    # x4: Volatility (2) 0.45 of sample period size
+    # x5: Volatility (3) 0.9 of sample period size
+    # x6: Volatility (4) 1.5 of sample period size
+    # x7: Volatility (5) 3.5 of sample period size
+
+************
+PREPARATION
+************
+bash/start_library_build_samples_library_master.sh
+
+python build_samples_library.py -i /root/testing_data_examples/data-1 -c 70000 -r 300 -s 15 -l /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -v 0.0005
+
+# compute past chains on old data
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p
+
+# train network
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -t
+
+# future matching
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+
+***********
+Conditions
+***********
+
+0.975 correlation for training and future matching
+200 agents
+10 cycles for training
+
+********
+RESULTS:
+********
+
+Saving population into population.pickle
+Generation: 9 <bound method NetworksPopulationEvolution.evolve_all_neurons_at_once of <trader.libs.genetic_network_algorithm.NetworksPopulationEvolution object at 0x2454190>>
+Population_size: 200 Profit_from_limited_investment: 74.5552816908 Limited_investment: 114697.559767 Profit_from_no_limit_investment: 52.3373876521 No_limit_investment: 144330.322085 Difference_between_limited_and_no_limited_investment: -29632.7623175 Difference_between_limited_gain_and_no_limited_gain:-334.112663824
+Saving population into population.pickle
+Strategies stats:
+{0: {'iterations': 0, 'name': 'evolve_neurons_backwards_from_last_layer'},
+ 1: {'iterations': 1, 'name': 'evolve_neurons_forward_from_first_layer'},
+ 2: {'iterations': 0, 'name': 'evolve_all_neurons_at_once'}}
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-1
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (5985, 0.69262816803610694, 2656, 0.30737183196389306)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (5715, 0.66138178451568108, 2926, 0.33861821548431892)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: 96.7731757295 Limited_investment: 85064.7974498 Profit_from_no_limit_investment: 52.3373876521 No_limit_investment: 144330.322085 Difference_between_limited_and_no_limited_investment: -59265.5246349 Difference_between_limited_gain_and_no_limited_gain:-311.894769786
+Gain:
+Previous tree layer counts: [115.0, 69.0, 64.0, 57.0, 54.0, 47.0, 40.0, 38.0, 34.0, 28.0, 24.0, 17.0, 14.0, 6.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 10.0, 13.0, 21.0, 22.0, 27.0, 24.0, 26.0, 23.0, 20.0, 18.0, 15.0, 12.0, 6.0, 1.0]
+Coverage in percentage: [0.0, 85.507246376811594, 79.6875, 63.157894736842103, 59.25925925925926, 42.553191489361701, 40.0, 31.578947368421055, 32.352941176470594, 28.571428571428584, 25.0, 11.764705882352942, 14.285714285714292, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [125.0, 69.0, 60.0, 53.0, 50.0, 41.0, 41.0, 34.0, 32.0, 28.0, 19.0, 10.0, 6.0, 2.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 9.0, 14.0, 20.0, 23.0, 21.0, 22.0, 22.0, 20.0, 19.0, 14.0, 9.0, 5.0, 2.0, 0.0]
+Coverage in percentage: [0.0, 86.956521739130437, 76.666666666666657, 62.264150943396231, 54.0, 48.780487804878042, 46.341463414634141, 35.294117647058826, 37.5, 32.142857142857153, 26.315789473684205, 10.0, 16.666666666666657, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [115.0, 9.0, 58.0, 16.0, 43.0, 19.0, 32.0, 15.0, 28.0, 9.0, 19.0, 9.0, 9.0, 5.0, 1.0] [0.0, 60.0, 6.0, 41.0, 11.0, 28.0, 8.0, 23.0, 6.0, 19.0, 5.0, 8.0, 5.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 4.0, 10.0, 11.0, 14.0, 14.0, 18.0, 12.0, 18.0, 8.0, 13.0, 9.0, 7.0, 5.0, 1.0] [0.0, 6.0, 3.0, 10.0, 8.0, 13.0, 6.0, 14.0, 5.0, 12.0, 5.0, 6.0, 5.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 55.555555555555557, 82.758620689655174, 31.25, 67.441860465116278, 26.315789473684205, 43.75, 20.0, 35.714285714285722, 11.111111111111114, 31.578947368421055, 0.0, 22.222222222222214, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 90.0, 50.0, 75.609756097560975, 27.272727272727266, 53.571428571428577, 25.0, 39.130434782608695, 16.666666666666657, 36.842105263157897, 0.0, 25.0, 0.0, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [125.0, 11.0, 53.0, 12.0, 42.0, 10.0, 33.0, 19.0, 15.0, 17.0, 14.0, 6.0, 5.0, 2.0, 0.0] [0.0, 58.0, 7.0, 41.0, 8.0, 31.0, 8.0, 15.0, 17.0, 11.0, 5.0, 4.0, 1.0, 0.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 6.0, 10.0, 8.0, 18.0, 7.0, 16.0, 13.0, 9.0, 13.0, 9.0, 6.0, 4.0, 2.0, 0.0] [0.0, 3.0, 4.0, 12.0, 5.0, 14.0, 6.0, 9.0, 11.0, 6.0, 5.0, 3.0, 1.0, 0.0, 0.0]
+Coverage in percentage known: [0.0, 45.454545454545453, 81.132075471698116, 33.333333333333329, 57.142857142857139, 30.0, 51.515151515151516, 31.578947368421055, 40.0, 23.529411764705884, 35.714285714285722, 0.0, 20.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 94.827586206896555, 42.857142857142861, 70.731707317073173, 37.5, 54.838709677419352, 25.0, 40.0, 35.294117647058826, 45.454545454545453, 0.0, 25.0, 0.0, 0.0, 0.0]
+
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-2
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (2145, 0.2482351579678278, 6496, 0.7517648420321722)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (1995, 0.23087605601203565, 6646, 0.76912394398796435)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: 5.79662364291 Limited_investment: 17066.9874874 Profit_from_no_limit_investment: -8.24415378834 No_limit_investment: 33616.0416212 Difference_between_limited_and_no_limited_investment: -16549.0541338 Difference_between_limited_gain_and_no_limited_gain:-77.6726951986
+Gain:
+Previous tree layer counts: [115.0, 69.0, 64.0, 57.0, 54.0, 47.0, 40.0, 38.0, 34.0, 28.0, 24.0, 17.0, 14.0, 6.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 11.0, 48.0, 44.0, 49.0, 42.0, 39.0, 38.0, 34.0, 28.0, 24.0, 17.0, 14.0, 6.0, 1.0]
+Coverage in percentage: [0.0, 84.05797101449275, 25.0, 22.807017543859644, 9.2592592592592666, 10.638297872340416, 2.5, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [125.0, 69.0, 60.0, 53.0, 50.0, 41.0, 41.0, 34.0, 32.0, 28.0, 19.0, 10.0, 6.0, 2.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [16.0, 20.0, 46.0, 41.0, 47.0, 39.0, 41.0, 34.0, 32.0, 28.0, 19.0, 10.0, 6.0, 2.0, 0.0]
+Coverage in percentage: [87.200000000000003, 71.014492753623188, 23.333333333333329, 22.64150943396227, 6.0, 4.8780487804878021, 0.0, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [115.0, 9.0, 58.0, 16.0, 43.0, 19.0, 32.0, 15.0, 28.0, 9.0, 19.0, 9.0, 9.0, 5.0, 1.0] [0.0, 60.0, 6.0, 41.0, 11.0, 28.0, 8.0, 23.0, 6.0, 19.0, 5.0, 8.0, 5.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 9.0, 42.0, 16.0, 38.0, 19.0, 31.0, 15.0, 28.0, 9.0, 19.0, 9.0, 9.0, 5.0, 1.0] [0.0, 2.0, 6.0, 28.0, 11.0, 23.0, 8.0, 23.0, 6.0, 19.0, 5.0, 8.0, 5.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 0.0, 27.586206896551715, 0.0, 11.627906976744185, 0.0, 3.125, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 96.666666666666671, 0.0, 31.707317073170728, 0.0, 17.857142857142861, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [125.0, 11.0, 53.0, 12.0, 42.0, 10.0, 33.0, 19.0, 15.0, 17.0, 14.0, 6.0, 5.0, 2.0, 0.0] [0.0, 58.0, 7.0, 41.0, 8.0, 31.0, 8.0, 15.0, 17.0, 11.0, 5.0, 4.0, 1.0, 0.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [16.0, 11.0, 39.0, 11.0, 39.0, 10.0, 33.0, 19.0, 15.0, 17.0, 14.0, 6.0, 5.0, 2.0, 0.0] [0.0, 9.0, 7.0, 30.0, 8.0, 29.0, 8.0, 15.0, 17.0, 11.0, 5.0, 4.0, 1.0, 0.0, 0.0]
+Coverage in percentage known: [87.200000000000003, 0.0, 26.415094339622641, 8.3333333333333286, 7.1428571428571388, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 84.482758620689651, 1.4210854715202004e-14, 26.829268292682926, 0.0, 6.4516129032258078, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-3
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (1560, 0.18053466034023841, 7081, 0.81946533965976165)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (1485, 0.17185510936234233, 7156, 0.82814489063765773)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: -6.69205403202 Limited_investment: 9497.97125381 Profit_from_no_limit_investment: -14.2044295238 No_limit_investment: 20727.4740083 Difference_between_limited_and_no_limited_investment: -11229.5027545 Difference_between_limited_gain_and_no_limited_gain:-24.837696393
+Gain:
+Previous tree layer counts: [115.0, 69.0, 64.0, 57.0, 54.0, 47.0, 40.0, 38.0, 34.0, 28.0, 24.0, 17.0, 14.0, 6.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [23.0, 24.0, 58.0, 54.0, 53.0, 46.0, 40.0, 38.0, 34.0, 28.0, 24.0, 17.0, 14.0, 6.0, 1.0]
+Coverage in percentage: [80.0, 65.217391304347814, 9.375, 5.2631578947368354, 1.8518518518518619, 2.1276595744680833, 0.0, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [125.0, 69.0, 60.0, 53.0, 50.0, 41.0, 41.0, 34.0, 32.0, 28.0, 19.0, 10.0, 6.0, 2.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [37.0, 29.0, 53.0, 51.0, 50.0, 41.0, 41.0, 34.0, 32.0, 28.0, 19.0, 10.0, 6.0, 2.0, 0.0]
+Coverage in percentage: [70.400000000000006, 57.971014492753618, 11.666666666666657, 3.7735849056603854, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [115.0, 9.0, 58.0, 16.0, 43.0, 19.0, 32.0, 15.0, 28.0, 9.0, 19.0, 9.0, 9.0, 5.0, 1.0] [0.0, 60.0, 6.0, 41.0, 11.0, 28.0, 8.0, 23.0, 6.0, 19.0, 5.0, 8.0, 5.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [23.0, 9.0, 52.0, 16.0, 42.0, 19.0, 32.0, 15.0, 28.0, 9.0, 19.0, 9.0, 9.0, 5.0, 1.0] [0.0, 15.0, 6.0, 38.0, 11.0, 27.0, 8.0, 23.0, 6.0, 19.0, 5.0, 8.0, 5.0, 1.0, 0.0]
+Coverage in percentage known: [80.0, 0.0, 10.34482758620689, 0.0, 2.3255813953488342, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 75.0, 0.0, 7.3170731707317032, 0.0, 3.5714285714285836, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [125.0, 11.0, 53.0, 12.0, 42.0, 10.0, 33.0, 19.0, 15.0, 17.0, 14.0, 6.0, 5.0, 2.0, 0.0] [0.0, 58.0, 7.0, 41.0, 8.0, 31.0, 8.0, 15.0, 17.0, 11.0, 5.0, 4.0, 1.0, 0.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [37.0, 10.0, 46.0, 12.0, 42.0, 10.0, 33.0, 19.0, 15.0, 17.0, 14.0, 6.0, 5.0, 2.0, 0.0] [0.0, 19.0, 7.0, 39.0, 8.0, 31.0, 8.0, 15.0, 17.0, 11.0, 5.0, 4.0, 1.0, 0.0, 0.0]
+Coverage in percentage known: [70.400000000000006, 9.0909090909090935, 13.20754716981132, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 67.241379310344826, 1.4210854715202004e-14, 4.8780487804878021, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+# This strategy
+data-1 96.7731757295 52.3373876521
+data-2 5.79662364291 -8.24415378834
+data-3 -6.69205403202 -14.2044295238
+
+# This strategy with volatility
+data-1 51.9275186393 -90.7348403502
+data-2 3.8114229014 9.51514127117
+data-3 5.24965630895 -1.52657249148
+
+# previous strategy without volatility
+data-1 65.9212935258 -90.7348403502
+data-2 7.37035726886 9.51514127117
+data-3 5.59564505606 -1.52657249148
+
+
+Generation: 9 <bound method NetworksPopulationEvolution.evolve_neurons_backwards_from_last_layer of <trader.libs.genetic_network_algorithm.NetworksPopulationEvolution object at 0x2df3610>>
+Population_size: 200 Profit_from_limited_investment: 45.1457867919 Limited_investment: 178775.259642 Profit_from_no_limit_investment: 3.83378933163 No_limit_investment: 208927.72999 Difference_between_limited_and_no_limited_investment: -30152.4703482 Difference_between_limited_gain_and_no_limited_gain:-382.727434483
+Saving population into population.pickle
+Strategies stats:
+{0: {'iterations': 1, 'name': 'evolve_neurons_backwards_from_last_layer'},
+ 1: {'iterations': 2, 'name': 'evolve_neurons_forward_from_first_layer'},
+ 2: {'iterations': 4, 'name': 'evolve_all_neurons_at_once'}}
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-1
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (11520, 0.66662808865227707, 5761, 0.33337191134772293)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (11775, 0.68138417915629879, 5506, 0.31861582084370116)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: 85.7646657917 Limited_investment: 147727.196753 Profit_from_no_limit_investment: 3.83378933163 No_limit_investment: 208927.72999 Difference_between_limited_and_no_limited_investment: -61200.5332372 Difference_between_limited_gain_and_no_limited_gain:-342.108555483
+Gain:
+Previous tree layer counts: [236.0, 144.0, 122.0, 105.0, 99.0, 90.0, 86.0, 75.0, 67.0, 57.0, 44.0, 31.0, 22.0, 8.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 26.0, 33.0, 45.0, 50.0, 58.0, 58.0, 54.0, 50.0, 46.0, 36.0, 26.0, 19.0, 8.0, 1.0]
+Coverage in percentage: [0.0, 81.944444444444443, 72.950819672131146, 57.142857142857146, 49.494949494949495, 35.555555555555557, 32.558139534883722, 28.0, 25.373134328358219, 19.298245614035082, 18.181818181818187, 16.129032258064512, 13.63636363636364, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [236.0, 146.0, 122.0, 111.0, 108.0, 91.0, 87.0, 77.0, 72.0, 61.0, 51.0, 33.0, 14.0, 3.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 21.0, 28.0, 50.0, 51.0, 60.0, 63.0, 59.0, 55.0, 51.0, 43.0, 28.0, 14.0, 3.0, 1.0]
+Coverage in percentage: [0.0, 85.61643835616438, 77.049180327868854, 54.954954954954957, 52.777777777777779, 34.065934065934073, 27.58620689655173, 23.376623376623385, 23.611111111111114, 16.393442622950815, 15.686274509803923, 15.151515151515156, 1.4210854715202004e-14, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [236.0, 20.0, 106.0, 30.0, 79.0, 32.0, 63.0, 37.0, 40.0, 30.0, 30.0, 17.0, 15.0, 7.0, 1.0] [0.0, 124.0, 16.0, 75.0, 20.0, 58.0, 23.0, 38.0, 27.0, 27.0, 14.0, 14.0, 7.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 12.0, 22.0, 24.0, 35.0, 27.0, 38.0, 33.0, 25.0, 27.0, 23.0, 15.0, 12.0, 7.0, 1.0] [0.0, 14.0, 11.0, 21.0, 15.0, 31.0, 20.0, 21.0, 25.0, 19.0, 13.0, 11.0, 7.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 40.0, 79.245283018867923, 20.0, 55.696202531645575, 15.625, 39.682539682539684, 10.810810810810807, 37.5, 10.0, 23.333333333333329, 11.764705882352942, 20.0, 1.4210854715202004e-14, 0.0]
+Coverage in percentage unknown: [0.0, 88.709677419354833, 31.25, 72.0, 25.0, 46.551724137931032, 13.043478260869563, 44.736842105263158, 7.407407407407419, 29.629629629629633, 7.142857142857153, 21.428571428571431, 1.4210854715202004e-14, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [236.0, 22.0, 111.0, 27.0, 88.0, 33.0, 63.0, 31.0, 49.0, 31.0, 35.0, 22.0, 12.0, 2.0, 1.0] [0.0, 124.0, 11.0, 84.0, 20.0, 58.0, 24.0, 46.0, 23.0, 30.0, 16.0, 11.0, 2.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 13.0, 20.0, 22.0, 35.0, 26.0, 43.0, 25.0, 37.0, 26.0, 30.0, 18.0, 12.0, 2.0, 1.0] [0.0, 8.0, 8.0, 28.0, 16.0, 34.0, 20.0, 34.0, 18.0, 25.0, 13.0, 10.0, 2.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 40.909090909090907, 81.981981981981988, 18.518518518518519, 60.227272727272727, 21.212121212121218, 31.746031746031747, 19.354838709677423, 24.489795918367349, 16.129032258064512, 14.285714285714278, 18.181818181818187, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 93.548387096774192, 27.272727272727266, 66.666666666666657, 20.0, 41.37931034482758, 16.666666666666657, 26.08695652173914, 21.739130434782609, 16.666666666666657, 18.75, 9.0909090909090935, 0.0, 0.0, 0.0]
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-2
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (5055, 0.2925177941091372, 12226, 0.70748220589086275)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (5100, 0.29512181008043514, 12181, 0.70487818991956486)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: 33.9108667176 Limited_investment: 43855.8177456 Profit_from_no_limit_investment: 37.1583272772 No_limit_investment: 64135.3933174 Difference_between_limited_and_no_limited_investment: -20279.5755719 Difference_between_limited_gain_and_no_limited_gain:-97.9693601984
+Gain:
+Previous tree layer counts: [236.0, 144.0, 122.0, 105.0, 99.0, 90.0, 86.0, 75.0, 67.0, 57.0, 44.0, 31.0, 22.0, 8.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 20.0, 83.0, 83.0, 91.0, 83.0, 83.0, 74.0, 67.0, 57.0, 44.0, 31.0, 22.0, 8.0, 1.0]
+Coverage in percentage: [0.0, 86.111111111111114, 31.967213114754102, 20.952380952380949, 8.0808080808080831, 7.7777777777777857, 3.4883720930232585, 1.3333333333333286, 0.0, -1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [236.0, 146.0, 122.0, 111.0, 108.0, 91.0, 87.0, 77.0, 72.0, 61.0, 51.0, 33.0, 14.0, 3.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 19.0, 79.0, 85.0, 98.0, 84.0, 83.0, 75.0, 70.0, 60.0, 51.0, 33.0, 14.0, 3.0, 1.0]
+Coverage in percentage: [0.0, 86.986301369863014, 35.245901639344254, 23.423423423423429, 9.2592592592592666, 7.6923076923076934, 4.5977011494252906, 2.5974025974026063, 2.7777777777777715, 1.6393442622950829, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [236.0, 20.0, 106.0, 30.0, 79.0, 32.0, 63.0, 37.0, 40.0, 30.0, 30.0, 17.0, 15.0, 7.0, 1.0] [0.0, 124.0, 16.0, 75.0, 20.0, 58.0, 23.0, 38.0, 27.0, 27.0, 14.0, 14.0, 7.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 18.0, 69.0, 30.0, 71.0, 32.0, 60.0, 37.0, 40.0, 30.0, 30.0, 17.0, 15.0, 7.0, 1.0] [0.0, 2.0, 14.0, 53.0, 20.0, 51.0, 23.0, 37.0, 27.0, 27.0, 14.0, 14.0, 7.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 10.0, 34.905660377358487, 0.0, 10.12658227848101, 0.0, 4.7619047619047592, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 0.0]
+Coverage in percentage unknown: [0.0, 98.387096774193552, 12.5, 29.333333333333329, 0.0, 12.068965517241367, 0.0, 2.6315789473684248, 0.0, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [236.0, 22.0, 111.0, 27.0, 88.0, 33.0, 63.0, 31.0, 49.0, 31.0, 35.0, 22.0, 12.0, 2.0, 1.0] [0.0, 124.0, 11.0, 84.0, 20.0, 58.0, 24.0, 46.0, 23.0, 30.0, 16.0, 11.0, 2.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [0.0, 18.0, 71.0, 26.0, 79.0, 33.0, 59.0, 31.0, 47.0, 31.0, 35.0, 22.0, 12.0, 2.0, 1.0] [0.0, 1.0, 8.0, 59.0, 19.0, 51.0, 24.0, 44.0, 23.0, 29.0, 16.0, 11.0, 2.0, 1.0, 0.0]
+Coverage in percentage known: [0.0, 18.181818181818187, 36.036036036036045, 3.7037037037037095, 10.227272727272734, 0.0, 6.3492063492063551, 0.0, 4.0816326530612201, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 99.193548387096769, 27.272727272727266, 29.761904761904759, 5.0, 12.068965517241367, 0.0, 4.3478260869565304, 0.0, 3.3333333333333286, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+[root@48439665a1c1 project-tr]# python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Future estimation:
+Loading from /root/trader-outputs/data-1-rescaled-cor0.975-r150-s15-c70000-v0005.pickle
+Loading from previous_gain_tree.pickle
+Loading from previous_loss_tree.pickle
+Loading from population.pickle
+Loading from previous_gain_samples.json
+Loading from previous_loss_samples.json
+Loading new data from testing_data_examples/data-3
+Filling price gaps.
+Running sample matching.
+Running sample matching.
+Saving into next_rescaled_trade_data.pickle
+Saving into next_matched_gain_samples.json
+Saving into next_matched_loss_samples.json
+Build new sample chains.
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (3630, 0.21005728835136855, 13651, 0.78994271164863139)
+Build correlation facts ...
+Build facts' time correlation map with samples which do not overlap and most occurrent samples considered first.
+TradeSampleChain Coverage: (3645, 0.21092529367513455, 13636, 0.78907470632486543)
+Running new trade sequence on old skeleton tree.
+Population_size: 1 Profit_from_limited_investment: 11.8181101346 Limited_investment: 35846.2374777 Profit_from_no_limit_investment: 12.6682158879 No_limit_investment: 53350.4097169 Difference_between_limited_and_no_limited_investment: -17504.1722392 Difference_between_limited_gain_and_no_limited_gain:-48.4652302935
+Gain:
+Previous tree layer counts: [236.0, 144.0, 122.0, 105.0, 99.0, 90.0, 86.0, 75.0, 67.0, 57.0, 44.0, 31.0, 22.0, 8.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [24.0, 39.0, 99.0, 91.0, 96.0, 87.0, 86.0, 75.0, 67.0, 57.0, 44.0, 31.0, 22.0, 8.0, 1.0]
+Coverage in percentage: [89.830508474576277, 72.916666666666657, 18.852459016393439, 13.333333333333343, 3.0303030303030312, 3.3333333333333428, 0.0, 0.0, 0.0, -1.4210854715202004e-14, 0.0, 0.0, 0.0, 0.0, 0.0]
+Loss:
+Previous tree layer counts: [236.0, 146.0, 122.0, 111.0, 108.0, 91.0, 87.0, 77.0, 72.0, 61.0, 51.0, 33.0, 14.0, 3.0, 1.0]
+Modified previous tree layer counts by new trade sequence: [31.0, 40.0, 95.0, 92.0, 104.0, 89.0, 87.0, 77.0, 72.0, 61.0, 51.0, 33.0, 14.0, 3.0, 1.0]
+Coverage in percentage: [86.86440677966101, 72.602739726027394, 22.131147540983605, 17.117117117117118, 3.7037037037037095, 2.1978021978022042, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 0.0]
+Gain extended:
+Previous tree layer counts: [236.0, 20.0, 106.0, 30.0, 79.0, 32.0, 63.0, 37.0, 40.0, 30.0, 30.0, 17.0, 15.0, 7.0, 1.0] [0.0, 124.0, 16.0, 75.0, 20.0, 58.0, 23.0, 38.0, 27.0, 27.0, 14.0, 14.0, 7.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [24.0, 18.0, 85.0, 30.0, 76.0, 32.0, 63.0, 37.0, 40.0, 30.0, 30.0, 17.0, 15.0, 7.0, 1.0] [0.0, 21.0, 14.0, 61.0, 20.0, 55.0, 23.0, 38.0, 27.0, 27.0, 14.0, 14.0, 7.0, 1.0, 0.0]
+Coverage in percentage known: [89.830508474576277, 10.0, 19.811320754716988, 0.0, 3.7974683544303787, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 0.0, 1.4210854715202004e-14, 0.0]
+Coverage in percentage unknown: [0.0, 83.064516129032256, 12.5, 18.666666666666671, 0.0, 5.1724137931034448, 0.0, 0.0, 0.0, 0.0, 1.4210854715202004e-14, 1.4210854715202004e-14, 1.4210854715202004e-14, 0.0, 0.0]
+Loss extended:
+Previous tree layer counts: [236.0, 22.0, 111.0, 27.0, 88.0, 33.0, 63.0, 31.0, 49.0, 31.0, 35.0, 22.0, 12.0, 2.0, 1.0] [0.0, 124.0, 11.0, 84.0, 20.0, 58.0, 24.0, 46.0, 23.0, 30.0, 16.0, 11.0, 2.0, 1.0, 0.0]
+Modified previous tree layer counts by new trade sequence: [31.0, 22.0, 84.0, 27.0, 84.0, 33.0, 63.0, 31.0, 49.0, 31.0, 35.0, 22.0, 12.0, 2.0, 1.0] [0.0, 18.0, 11.0, 65.0, 20.0, 56.0, 24.0, 46.0, 23.0, 30.0, 16.0, 11.0, 2.0, 1.0, 0.0]
+Coverage in percentage known: [86.86440677966101, 0.0, 24.324324324324337, 0.0, 4.5454545454545467, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Coverage in percentage unknown: [0.0, 85.483870967741936, 0.0, 22.61904761904762, 0.0, 3.4482758620689538, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

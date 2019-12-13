@@ -1,0 +1,24 @@
+Build probability tree:
+
+- tree can have different depth
+- leaf can have multiple other leafs
+- each leaf has computed probability
+
+a -> a (0.2) (price_delta_average, trade_delta_average ?)
+  -> b (0.3)
+  -> c (0.4)
+  -> no match (0.1) -> a
+                    -> b
+                    -> c
+                    -> no match
+
+Questions for leaf:
+
+- what is probability of success and failure ?
+- what is probability of another leaf ?
+
+Strategy for using tree:
+
+- based on likelyhood of (success & price_delta & trade_delta_average)
+choose how much to invest
+- when to sell is another question ?

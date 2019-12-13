@@ -1,0 +1,29 @@
+Testing probability tree against new data:
+
+- (/) write code which does sample matching against new data, so you have at the
+  end new sequence which can run against old tree
+- then measure
+-- how many sequences were achieved partially or completely
+-- how many sequences were not touched at all
+
+Test data scenarios:
+- sample counts 10000 variation 0.005
+1, 2, 3 units of data
+- big intervals with rescale period 5, 3 minutes with 10, 15, 20 sample
+  lengths
+- small intervals with rescale period 30, 60 minutes with 10, 15, 20 sample
+  lengths
+
+- what would be profit if those were fully used (partial and complete together
+  avoid using first marking sample in calculation)
+- experiment with sequence length and samples size to get idea about different
+  gain prospects
+
+- do not invest when it is known unknown so you can implement fuzzy logic, hmm
+  this is problematic as we get what we get so probably not possible to
+  implement
+-- make sure that you record correct start_and_end position for trade so you
+   can compute properly gain
+-- also make sure that probability is computed correctly
+-- and where we are in the trade data
+- shall I allow to not have any known unknown if there is not one available ?

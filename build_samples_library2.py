@@ -3,10 +3,10 @@ import time
 import datetime
 import pickle
 
-from celery import group
+# from celery import group
 
 # from trader.sample_matching_tasks import find_sample_correlations
-from trader.sample_matching_tasks import find_sample_correlations_no_limits
+from trader.gpu_sample_matching_tasks import load_program, find_sample_correlations_no_limits
 # from trader.sample_matching_tasks import find_first_sample_correlations
 from trader.libs.trade_data import TradeData, fill_empty_gaps
 # from trader.libs.trade_data import get_up_patterns_stats_3
@@ -133,11 +133,11 @@ def build_samples_library(
         len(samples))
 
     start_time = time.time()
-    # order of samples pased to find_first_sample_correlations
-    # does not mather in this case
+    # order of samples passed to find_first_sample_correlations
+    # does not matter in this case
+
+    """
     g = group(
-        # find_first_sample_correlations.s(
-        # find_sample_correlations.s(  # noqa
         find_sample_correlations_no_limits.s(  # noqa
             trade_data.prices, samples[ch[0]:ch[1]],
             sample_size,
@@ -147,6 +147,18 @@ def build_samples_library(
     for results in g().get():
         for result in results:
             updated_samples.append(result)
+    """
+    load_program(sample_size)
+    step = 1024;
+    updated_samples = []
+    for index in xrange(0, len(samples), step):
+        parson_start = time.time()
+        updated_samples.extend(
+            find_sample_correlations_no_limits(
+                trade_data.prices, samples[index:index + step],
+                sample_size, acceptable_correlation_coef))
+        print "Matching of " + str(step) + " took " + str(time.time() - parson_start) + " seconds for index " + str(index)
+
     print "Sample matching took % seconds" % (time.time() - start_time)
 
     print "Looking for %s%% correlations finished ...\n" % \
@@ -158,6 +170,8 @@ def build_samples_library(
     sorted_samples_minus = sorted(
         updated_samples,
         key=lambda sample: len(sample["-correlation_positions"]), reverse=True)
+
+    # sys.exit()
 
     # actual_window_size = 2 * rescale_period * min_samples_distance
     """

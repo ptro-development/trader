@@ -1,0 +1,73 @@
+Branch : strategy_biggest_loss_and_gain_plus_volatility_used_in_delete_most_occurent
+
+
+Random sampling of trading sequence happens at the beginning.
+
+- This produces samples and with their ocurrennce / correlation positions so it is possible
+  to recognize which are the most occurent ones. At this point there is a lot
+  of duplication as there are obviously samples which point back.
+- facts / correlation pairs are built
+- a time map is built. Keys are positions in time and value is set to most
+  occurent fact with this position
+- built a list of samples_epochs from previous previous time map
+- construct time lime ordered list of elements from a time map above
+- for each sample get gain / loss chains which can overlap with other chains
+- build sequence and fill gaps with N
+- build tree
+
+
+***********
+NEW things
+***********
+
+Some new ideas:
+- there is a need for bigger datasets so computation is going to be heavy, I
+  need more optimalisation and saving point so it is easy to rerun from where
+  we finished. Once computed samples should be stored in database.
+- probability maybe should not be used in predictions
+- write agent to buy / sell and learn
+
+
+************
+PREPARATION
+************
+bash/start_library_build_samples_library_master.sh
+
+python build_samples_library.py -i /root/testing_data_examples/data-1 -c 70000 -r 300 -s 15 -l /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -v 0.0005
+
+# compute past chains on old data
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p
+
+# train network
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -t
+
+# future matching
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle
+
+***********
+Conditions
+***********
+
+0.975 correlation for training and future matching
+200 agents
+10 cycles for training
+
+********
+RESULTS:
+********
+
+
+# This strategy
+data-1 96.7731757295 52.3373876521
+data-2 5.79662364291 -8.24415378834
+data-3 -6.69205403202 -14.2044295238
+
+# This strategy with volatility
+data-1 51.9275186393 -90.7348403502
+data-2 3.8114229014 9.51514127117
+data-3 5.24965630895 -1.52657249148
+
+# previous strategy without volatility
+data-1 65.9212935258 -90.7348403502
+data-2 7.37035726886 9.51514127117
+data-3 5.59564505606 -1.52657249148

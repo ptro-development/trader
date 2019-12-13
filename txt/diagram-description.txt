@@ -1,0 +1,34 @@
+*Focus*
+
+    The focus in name of diagram file name represents roughly how "imprecise"
+    distances between A and B can be. Smaller focus number means higher
+    precision and less loose representation of relations. The time is not in
+    seconds but rather in compressed units, so
+
+    e.g. focus number 50 means that time compressing unit is 50 and
+         A and B positions gravitated / were adjusted to the closest
+         unit index.
+
+*Node*
+
+    e.g.: +1426795010
+
+    It represents #FactCorrelation in diagram as a +number /-number.
+    #FactCorrelation represent correlation between two different samples.
+    The number is epoch time position of sample which was used for as etalon
+    to find other correlations. Samples were preselected based on their
+    appearance count. Plus sign means positive correlation and minus sign
+    means negative correlation
+
+*Line between nodes*
+
+    e.g.: +1426795010_-1426796000_2_50
+
+    Line has string in format A_B_X_Y
+        A represents the first #FactCorrelation
+        B represents the second #FactCorrelation
+        X represents appearance number of Left-Right type relation between A and B
+        Y represents distance between A and B in compressed time periods
+          units. The time is not in seconds but rather in compressed units, so
+          e.g.: 50 means 50 * compression_time_period
+

@@ -1,0 +1,53 @@
+# to activate right environment
+cd /home/pwrap/code/python-venv/project-t
+source ../bin/activate
+
+# to build library samples
+./start_library_build_samples_library.sh
+celery -A trader flower
+python build_samples_library.py -i testing_data_examples/bitstamp-json.log
+
+# build relation charts to see repetition of patterns
+python relation.py -s samples_library.json
+
+# to start trading test with collapsed data
+./start_trading.sh
+celery -A trader flower
+python replay_incoming_trade_log_collapsed.py -l testing_data_examples/bitstamp-json.log
+./stop_trading.sh
+
+# to start trading test with trading data line by line
+./start_trading.sh
+celery -A trader flower
+python replay_incoming_trade_log_line_by_line.py -l testing_data_examples/bitstamp-json.log -c 250
+./stop_trading.sh
+
+# to replay events log for trader.event_consumer_single_tasks.process
+./start_trading.sh
+celery -A trader flower
+python replay_event_log.py replay_event_log.py -l testing_data_examples/events.log -k 1
+./stop_trading.sh
+
+# to replay events log for trader.event_consumer_multi_tasks.process_trade_candidate
+cat event_consumer_multi.log | grep process_filtered_trade_candidate > testing_data_examples/process_filtered_trade_candidate.log
+./start_trading.sh
+celery -A trader flower
+python replay_event_log.py replay_event_log.py -l testing_data_examples/process_filtered_trade_candidate.log -k 2
+./stop_trading.sh
+
+python listen.py rescaled_trading_data.pickle samples_library.pickle
+
+python -m doctest -v libs/utils.py
+
+
+# important parameters in trader/event_consumer_multi_tasks.py
+
+    min_relation_appearance = 1
+    max_focus = 350
+    min_required_correlation_percentage = 35.0
+
+# in  trader/event_consumer_single_tasks.py
+
+    max_distance = 2500
+    rescale_period = 60 * 5
+

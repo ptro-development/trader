@@ -16,7 +16,7 @@ class Leaf(object):
         self.next_leafs = []
 
     def __str__(self):
-        return "<key:" + str(self.key) + " data:" + str(self.data) + \
+        return "<id:" + str(id(self)) + " key:" + str(self.key) + " data:" + str(self.data) + \
             " next_leafs count:" + str(len(self.next_leafs)) + ">"
 
     def is_last_leaf(self):
@@ -91,27 +91,45 @@ def get_next_not_found_leafs_extended(last_leaf, not_found_keys):
         count = n_leaf.get_data()["count"]
         if count > 0:
             overall_count += count
-            data.append([n_leaf, int(n_leaf.get_key()[1:]), count])
+            #data.append([n_leaf, int(n_leaf.get_key()[1:]), count])
+            for volatility_set in n_leaf.get_data()["volatilities"]:
+                data_to_add = [n_leaf, int(n_leaf.get_key()[1:]), count]
+                data_to_add.extend(volatility_set)
+                data.append(data_to_add)
             # data.append([n_leaf, int(n_leaf.get_key()[1:])])
     # compute probability
     for index, bit in enumerate(data):
         data[index][2] = float(bit[2]) / overall_count
         # pass
+    # print "not_found data", data
     return data
 
 
 def get_next_found_leafs_extended(
         key, last_leaf, found_keys, common_leaf_attributes, samples):
+    """
+    To compute array of leafs characteristics against incoming key.
+
+    [[leaf, attribute_number, probability, correlation, volatilities_1, volatilities_2, ...], ...]
+
+    last_leaf - represents previous leaf
+    found_keys - are used to do selection on next leafs
+    common_leaf_attributes -
+    samples -
+    """
     assert isinstance(last_leaf, Leaf) and last_leaf is not None
     assert isinstance(found_keys, list) and len(found_keys) != 0
     assert isinstance(common_leaf_attributes, dict) and len(common_leaf_attributes) != 0  # noqa
     assert isinstance(samples, list) and len(found_keys) != 0
-    # [[leaf, attribute_number, probability, correlation], ...]
     data = []
     overall_count = 0
     key_sample_data = get_key_sample_data(key, samples)
+    #print last_leaf.get_leafs(found_keys)
+    #import sys; sys.exit();
     for n_leaf in last_leaf.get_leafs(found_keys):
+        volatilities = []
         count = n_leaf.get_data()["count"]
+        # print "n_leaf", n_leaf, count
         if count > 0:
             overall_count += count
             n_attribute = get_leaf_atrribute_number(
@@ -120,7 +138,13 @@ def get_next_found_leafs_extended(
                 n_leaf.get_key(), samples)
             # print "key_sample_data", key_sample_data, "n_key_sample_data_b", n_key_sample_data_b  # noqa
             correlation, other = pearsonr(key_sample_data, n_key_sample_data_b)
-            data.append([n_leaf, n_attribute, count, correlation])
+            # TODO: compute volatilities
+            # only volatilities after re-sampling should be used, so from tree
+            # print "correlation", correlation
+            for volatility_set in n_leaf.get_data()["volatilities"]:
+                data_to_add = [n_leaf, n_attribute, count, correlation]
+                data_to_add.extend(volatility_set)
+                data.append(data_to_add)
             # data.append([n_leaf, n_attribute])
     # compute probability
     for index, bit in enumerate(data):
@@ -209,6 +233,34 @@ def reset_tree_counters(root_leaf):
         leaf.set_data(data)
         if not leaf.is_last_leaf():
             reset_tree_counters(leaf)
+
+
+def reset_tree_volatilities(root_leaf):
+    for leaf in root_leaf.get_next_leafs():
+        data = leaf.get_data()
+        data["volatilities"] = []
+        leaf.set_data(data)
+        if not leaf.is_last_leaf():
+            reset_tree_counters(leaf)
+
+
+def reset_tree_values(root_leaf):
+    reset_tree_counters(root_leaf)
+    reset_tree_volatilities(root_leaf)
+
+
+def normalise_tree_volatilities(root_leaf, linear_normalisation):
+    for leaf in root_leaf.get_next_leafs():
+        data = leaf.get_data()
+        if "volatilities" in data:
+            normalised_volatilities = []
+            for volatilities in data["volatilities"]:
+                normalised_volatilities.append(
+                    linear_normalisation.normalise_array(volatilities))
+            data["volatilities"] = normalised_volatilities
+            leaf.set_data(data)
+            if not leaf.is_last_leaf():
+                normalise_tree_volatilities(leaf, linear_normalisation)
 
 
 def get_leafs_layers(leafs, depth=0):
@@ -515,9 +567,12 @@ def get_tree_layers_counts_extended(tree, max_depth=50):
 
 
 def increment_leaf_key_count(leaf, data_key="count"):
+    data = leaf.get_data()
     if data_key in leaf.data:
-        data = leaf.get_data()
         data[data_key] += 1
+        leaf.set_data(data)
+    else:
+        data[data_key] = 1
         leaf.set_data(data)
 
 
@@ -526,3 +581,26 @@ def decrement_leaf_key_count(leaf, data_key="count"):
         data = leaf.get_data()
         data[data_key] -= 1
         leaf.set_data(data)
+
+
+def delete_leaf_volatilities(leaf, delete_index, data_key="volatilities"):
+    if data_key in leaf.data:
+        data = leaf.get_data()
+        del data[data_key][delete_index]
+        leaf.set_data(data)
+
+
+def append_leaf_key_volatilities(leaf, volatilities, data_key="volatilities"):
+    data = leaf.get_data()
+    # print leaf.key, "volatilities", volatilities
+    if data_key in leaf.data:
+        data[data_key].append(volatilities)
+        leaf.set_data(data)
+    else:
+        data[data_key] = [volatilities]
+        leaf.set_data(data)
+    # print "data", data
+
+
+def get_leaf_key_volatilities(leaf, data_key="volatilities"):
+    return leaf.get_data()["volatilities"]

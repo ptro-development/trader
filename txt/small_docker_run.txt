@@ -1,0 +1,23 @@
+bash/start_library_build_samples_library_master.sh
+
+# big run 37 minutes
+
+Log start from 11-03-2015 21:46:50 to 10-04-2015 21:46:46
+Data rescaling of 158075 records done with rescale_period 300.0 seconds
+resulting into 8641 records. 344 empty data records. Overall 3.9810207152 % of empty records
+Saving rescaled data into /root/data-1-rescaled-cor0.85-r300-s15-c70000-v0005.pickle
+Data sampled for sample_count 70000 and was able to get sample_count 8589 for sample_size 15 (75.0 minutes) min_sample_variation 0.0005
+Similar samples were eliminated, new sample_count is 8589
+Sample matching took 2217.54303598 seconds
+Looking for 0.975% correlations finished ...
+
+python build_samples_library.py -i /root/testing_data_examples/data-1 -c 70000 -r 300 -s 15 -l /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -v 0.0005
+
+# compute past chains on old data
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p
+
+# train network
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -t
+
+# future matching
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle

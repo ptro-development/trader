@@ -3,18 +3,16 @@ import time
 import datetime
 import pickle
 
-from celery import group
-
 # from trader.sample_matching_tasks import find_sample_correlations
-from trader.sample_matching_tasks import find_sample_correlations_no_limits
+from trader.gpu_sample_matching_tasks import load_program, find_sample_correlations_no_limits
 # from trader.sample_matching_tasks import find_first_sample_correlations
 from trader.libs.trade_data import TradeData, fill_empty_gaps
 # from trader.libs.trade_data import get_up_patterns_stats_3
 # from trader.libs.trade_data import get_grow_sample_percentage_stats_3
 # from trader.libs.trade_data import gain_up_estimate
 from trader.libs.samples import get_random_samples, print_price_sample, \
-    remove_close_samples, add_sample_attributes, save_samples_library, \
-    eliminate_samples
+    remove_close_samples, add_sample_attributes, save_simple_samples_library, \
+    eliminate_samples, get_random_samples2
 from trader.libs.utils import get_chunks_indexes
 # from trader.libs.plot import plot_plus_correlations_for_sample
 
@@ -120,9 +118,12 @@ def build_samples_library(
     print "Saving rescaled data into %s" % rescaled_data_log
     with open(rescaled_data_log, "w") as fd:
         pickle.dump(trade_data, fd)
-    samples = get_random_samples(
+    #samples = get_random_samples2(
+    #    trade_data.prices,
+    #    sample_size, sample_count, min_sample_variation)
+    samples = get_random_samples2(
         trade_data.prices,
-        sample_size, sample_count, min_sample_variation)
+        sample_size, sample_count)
     print "Data sampled for sample_count %s and was able to get sample_count %s for sample_size %s (%s minutes) min_sample_variation %s" % (  # noqa
         sample_count, len(samples),
         sample_size,
@@ -133,31 +134,22 @@ def build_samples_library(
         len(samples))
 
     start_time = time.time()
-    # order of samples pased to find_first_sample_correlations
-    # does not mather in this case
-    g = group(
-        # find_first_sample_correlations.s(
-        # find_sample_correlations.s(  # noqa
-        find_sample_correlations_no_limits.s(  # noqa
-            trade_data.prices, samples[ch[0]:ch[1]],
-            sample_size,
-            acceptable_correlation_coef) for ch in get_chunks_indexes(
-                len(samples), 40))
+
+    load_program(sample_size)
+    step = 1024;
     updated_samples = []
-    for results in g().get():
-        for result in results:
-            updated_samples.append(result)
+    for index in xrange(0, len(samples), step):
+        parson_start = time.time()
+        updated_samples.extend(
+            find_sample_correlations_no_limits(
+                trade_data.prices, samples[index:index + step],
+                sample_size, acceptable_correlation_coef))
+        print "Matching of " + str(step) + " took " + str(time.time() - parson_start) + " seconds for index " + str(index)
+
     print "Sample matching took % seconds" % (time.time() - start_time)
 
     print "Looking for %s%% correlations finished ...\n" % \
         acceptable_correlation_coef
-
-    sorted_samples_plus = sorted(
-        updated_samples,
-        key=lambda sample: len(sample["+correlation_positions"]), reverse=True)
-    sorted_samples_minus = sorted(
-        updated_samples,
-        key=lambda sample: len(sample["-correlation_positions"]), reverse=True)
 
     # actual_window_size = 2 * rescale_period * min_samples_distance
     """
@@ -171,68 +163,36 @@ def build_samples_library(
     """
 
     print "Add to samples acceptable_correlation_coef, sample_epoch and rescale_period."  # noqa
-    for samples in sorted_samples_plus, sorted_samples_minus:
-        map(lambda x: x.update({
-            "rescale_period": rescale_period,
-            "sample_epoch": trade_data.times[x["sample_position"]],
-            "required_correlation": acceptable_correlation_coef}
-            ),
-            samples)
+    map(lambda x: x.update({
+        "rescale_period": rescale_period,
+        "sample_epoch": trade_data.times[x["sample_position"]],
+        "required_correlation": acceptable_correlation_coef}
+        ),
+        updated_samples)
     print "Enrich samples with its attributes ..."
-    add_sample_attributes(sorted_samples_plus)
-    add_sample_attributes(sorted_samples_minus)
+    add_sample_attributes(updated_samples)
 
     print "Add samples positions matches as epochs"
-    for samples in sorted_samples_plus, sorted_samples_minus:
-        map(
-            lambda x: x.update({
-                "-correlation_positions_epochs": [trade_data.times[i] for i in x["-correlation_positions"]]}),  # noqa
-            samples
-        )
-        map(
-            lambda x: x.update({
-                "+correlation_positions_epochs": [trade_data.times[i] for i in x["+correlation_positions"]]}),  # noqa
-            samples
-        )
+    map(
+        lambda x: x.update({
+            "-correlation_positions_epochs": [trade_data.times[i] for i in x["-correlation_positions"]]}),  # noqa
+        updated_samples
+    )
+    map(
+        lambda x: x.update({
+            "+correlation_positions_epochs": [trade_data.times[i] for i in x["+correlation_positions"]]}),  # noqa
+        updated_samples
+    )
 
     print "Add trades amount to samples"
-    for samples in sorted_samples_plus, sorted_samples_minus:
-        map(
-            lambda x: x.update({"sample_data_trades_amount": trade_data.trades[x["sample_position"]: x["sample_position"] + sample_size]}),  # noqa
-            samples
-        )
+    map(
+        lambda x: x.update({"sample_data_trades_amount": trade_data.trades[x["sample_position"]: x["sample_position"] + sample_size]}),  # noqa
+        updated_samples
+    )
 
     print "Saving result into %s" % samples_library
-    save_samples_library(
-        samples_library, sorted_samples_plus, sorted_samples_minus)
-
-    print "\nBest prices +correlations"
-    for i in range(0, 5):
-        print_price_sample(
-            trade_data.times,
-            sorted_samples_plus[i],
-            trade_data.gaps,
-            trade_data.trades)
-        print
-
-    print "\nBest prices -correlations"
-    for i in range(0, 5):
-        print_price_sample(
-            trade_data.times,
-            sorted_samples_minus[i],
-            trade_data.gaps,
-            trade_data.trades)
-        print
-
-    # print "\nPlotting best +correlations"
-    # plot_best_correlation(trade_data.prices, sorted_samples_plus[0], limit=6)
-
-    # print "\nPlotting best -correlations"
-    # plot_best_correlation(
-    #    trade_data.prices, sorted_samples_minus[0], limit=6)
-
-    # show()
-    # time.sleep(10)
+    save_simple_samples_library(
+        samples_library, updated_samples)
 
 
 def parse_options(argv):

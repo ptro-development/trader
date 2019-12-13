@@ -1,0 +1,23 @@
+# to start celery workers
+bash/start_library_build_samples_library_master.sh
+
+# 20 minutes in docker
+python build_samples_library.py -i testing_data_examples/data-1 -c 300 -r 800 -s 15 -v 0.0005 -a 0.95
+python build_samples_library.py -i testing_data_examples/data-1 -c 3000 -r 800 -s 15 -v 0.0005 -a 0.95
+
+# big run
+python build_samples_library.py -i testing_data_examples/data-1 -c 70000 -r 300 -s 15 -l data-1-rescaled-cor0.85-r300-s15-c70000-v0005.pickle -p data-1-rescaled-cor0.85-r300-s15-c70000-v0005.json -v 0.0005
+python relation15.py -r data-1-rescaled-cor0.85-r300-s15-c70000-v0005.pickle -s data-1-rescaled-cor0.85-r300-s15-c70000-v0005.json -t
+
+
+# compute past chains on old data
+python relation15.py -s samples_library.json -r rescaled_trade_data.pickle -p
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -p
+
+# train network
+python relation15.py -s samples_library.json -r rescaled_trade_data.pickle -t
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle -t
+
+# future matching
+python relation15.py -s samples_library.json -r rescaled_trade_data.pickle
+python relation15.py -s /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.json -r /root/trader-outputs/data-1-rescaled-cor0.975-r300-s15-c70000-v0005.pickle

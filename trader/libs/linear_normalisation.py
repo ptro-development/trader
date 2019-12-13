@@ -31,9 +31,9 @@ class LinearNormalisation(object):
     def normalise_value(self, value):
         return self.a * value + self.b
 
-    def xnomalise_array(self, array):
+    def xnormalise_array(self, array):
         for value in array:
-            yield self.normalize_value(value)
+            yield self.normalise_value(value)
 
-    def nomalise_array(self, array):
-        return list(self.xnomalise_array(array))
+    def normalise_array(self, array):
+        return list(self.xnormalise_array(array))

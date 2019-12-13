@@ -1,0 +1,105 @@
+Branch : best_gain_strategy_samples
+
+This branch was created just before implementing a new strategy to have snapshot of existing one.
+
+++++++++++++++++++++++++++++++
+The current snapshot strategy:
+++++++++++++++++++++++++++++++
+
+Selection of samples & chains:
+  Trading chains / sequences are built form most often appearing samples.
+  Their length is limited. Two skeleton trees are built from trading sequences.
+
+  Loss tree:
+        This considers only chains where the end price is always smaller
+        against previous sample in chain. Jump of price in the middle of
+        the chain is acceptable if end gain is smaller. The whole chain does
+        not have to be always be achieved and spikes in chain can make it very
+        unpredictable and therefore full loss might not achieved. This could
+        be improved to stop chain if there were two consequent drops in price.
+
+  Gain tree:
+        This considers only chains where the end price is always bigger
+        against previous sample in chain. Drop of price in the middle of the chain is
+        acceptable if end gain is bigger. This can by very dangerous as
+        whole chain does not have to be always be achieved and spikes in chain can
+        make it very unpredictable and therefore gain might vanish.
+
+  Trees have counters which represent appearance of chains' samples. They are
+  later used against new data when trying to do prediction. During this
+  process trees' counters are decremented as it finds matching trading chains
+  so the probability of appearance of the same sequence is lowered. Similar chains
+  are found by measuring euclidean x-dimension distance.
+
+Strategy disadvantages / concerns:
+
+- maximum gain or loss chains are used. Both of them are extremes. Not sure
+  that this is a good idea.
+-- suggested improvements:
+    TBC
+- not finishing chains has bad consequences. This happens probably quite often.
+- when doing prediction the same intervals are used for training and buying
+- this strategy expects in some sense repetition of past which is probably
+  bad idea in first place, maybe some knowledge of chaos theory should be
+  applied to find short term attractors
+
+Training with previous data:
+  When training both trading trees are used to compute inputs for neural network
+
+    Inputs:
+
+    1. Probability of hitting leaf in tree
+        1.1 - know sample
+        1.2 - unknown
+    2. Layer number / index
+    3. Current position
+    4. Starting position
+
+    Output:
+
+    1. Amount to buy <0.0, 1.0> or <0% to 100%>
+
+  Training runs against all training data until the best overall gain is obtained.
+
+Trading test for new data:
+  New trading sequence is completely mapped / searched for previous samples and
+  then new trading chains are built. These are then ran against previous gain /
+  loss trees to compute inputs for network so it knows how much to buy
+  (quantity).
+  During this process algorithm does buying quantity of currency
+  witch comes out of trained neuron network from previous step. It basically
+  expects that some of these chains are going to happen or at least chains
+  which have similar close shape.
+
+++++++++++++++++++++++
+Possible improvements
+++++++++++++++++++++++
+
+- Gain Tree: implement limit on how many consequent drops in gain there can be
+  to avoid finishing with loss, this is very much dependent on volatility
+  of the market so it is hard get it right.It maybe be easy to implement
+  yet not much benefiting to set it as constant.
+- implement measure of volatility and add it to neural network. The question
+  is. What time period should it be covering ? Maybe start with
+  - 0.25 of sample window
+  - 0.5 of sample window
+  - 0.75 of sample window
+  - 1.0 of sample window
+  - 1.5 of sample window
+  - 2.0 of sample window
+  - 4.0 of sample window
+  - 6.0 of sample window
+  - or based on based on percentage of tree length (need to think about this
+    and experiment) Also, loss tree should be considered.
+- volatilities are not stored in original tree only counts are kept which
+  means that we are relaying on neural network to do the best guess based
+  on a lot of training. Basically we face question where the memory of past
+  should be kept ? What is the reasoning if going one or another way ?
+-- I guess it makes sense to keep memories in long term memory (tree) if they
+   proved to be accurate and relevant to market data "True" >= "market law"
+- are neural networks good in predicting predictable sequences ? we think they
+  are it parts of those sequences become units / patterns of inputs / network
+  structure
+-- how do you find what embedded patterns should be ?
+--- crystalisation of knowledge / cooling down into most efficient shapes or
+patterns
